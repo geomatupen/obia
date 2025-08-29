@@ -10,7 +10,7 @@ from rasterio.windows import from_bounds
 from rasterio.enums import Resampling
 from rasterio.warp import transform_bounds
 
-from fastapi import FastAPI, UploadFile, File, Form, Request, Body
+from fastapi import FastAPI, UploadFile, File, Form, Request, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 # If you have real segmentation helpers, keep these:
 from obia.segmentation import run_slic_segmentation, layer_to_geojson
 from obia.classification import classify as run_classification
+from obia.downsample import downsample_raster
 
 import logging, time
 logger = logging.getLogger("app")
@@ -27,9 +28,16 @@ if not logger.handlers:
     h.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
     logger.addHandler(h)
 
+MAX_UPLOAD_MB = float(os.getenv("RASTER_MAX_MB", "30"))
+AUTO_DS_FACTOR = float(os.getenv("RASTER_DS_FACTOR", "4"))
+
 # ---------------- paths
 BASE = Path(__file__).resolve().parent
+# UPLOADS = 
+UPLOAD_TMP_DIR = Path("uploads/tmp")
 UPLOADS = BASE / "uploads"
+UPLOAD_TMP_DIR.mkdir(parents=True, exist_ok=True)
+
 RESULTS = BASE / "results"
 SEGMENTS_DIR = RESULTS / "segments"
 CLASSIFY_DIR = RESULTS / "classify"
@@ -154,6 +162,23 @@ def _unique_segment_filename(raster_display_name: str, scale, compactness) -> st
         i += 1
     return candidate
 
+# --- size helpers ---
+def _size_mb(path: Path) -> float:
+    try:
+        return path.stat().st_size / (1024 * 1024)
+    except FileNotFoundError:
+        return 0.0
+
+def _ds_factor_by_size(mb: float) -> int:
+    # 0–30 no DS; 30–100 ->2; 100–500 ->4; 500–1024 ->6; 1024–2048 ->8; >2048 ->12
+    if mb <= 30:        return 1
+    if mb <= 100:       return 2
+    if mb <= 500:       return 4
+    if mb <= 1024:      return 6
+    if mb <= 2048:      return 8
+    return 12
+
+
 
 # ---------------- health
 @app.get("/health")
@@ -177,7 +202,8 @@ async def upload_raster(file: UploadFile = File(...)):
     suffix = Path(file.filename).suffix.lower()
     if suffix not in {".tif", ".tiff", ".img"}:
         return _bad("Only .tif/.tiff/.img allowed.")
-    tmp = UPLOADS / f"tmp_{uuid.uuid4().hex}{suffix}"
+    tmp = UPLOAD_TMP_DIR / f"tmp_{uuid.uuid4().hex}{suffix}"
+
     with tmp.open("wb") as f:
         shutil.copyfileobj(file.file, f)
     sha1 = _sha1_file(tmp)
@@ -187,6 +213,28 @@ async def upload_raster(file: UploadFile = File(...)):
         if it.get("sha1") == sha1:
             tmp.unlink(missing_ok=True)
             return _ok({"id": it["id"], "name": it["name"], "dedup": True})
+
+
+    # --- auto-downsample in tmp based on size tiers ---
+    try:
+        mb = _size_mb(tmp)
+        factor = _ds_factor_by_size(mb)
+        if factor > 1:
+            # write to a sibling temp, then replace atomically
+            tmp_ds = tmp.with_name(f"{tmp.stem}_ds{int(factor)}{tmp.suffix}")
+            try:
+                downsample_raster(str(tmp), str(tmp_ds), factor)
+                tmp.unlink(missing_ok=True)
+                tmp_ds.replace(tmp)  # replace original tmp with downsampled
+                # (optional) log: logger.info("Downsampled %s (%.1f MB) by %dx", tmp.name, mb, factor)
+            except Exception as e:
+                # If downsample fails, keep original tmp and continue
+                if tmp_ds.exists():
+                    tmp_ds.unlink(missing_ok=True)
+                logger.warning("Downsample skipped (%s): %s", tmp.name, e)
+    except Exception as e:
+        logger.warning("Downsample decision failed (%s): %s", tmp.name, e)
+
 
     # >>> CHANGED: save using the real filename (with numbering on duplicates)
     existing_names = [it["name"] for it in db["items"]]

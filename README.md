@@ -2,7 +2,7 @@
 
 This project provides a **general-purpose OBIA (Object-Based Image Analysis) workflow** that works with any raster imagery.  
 It uses the [NickySpatial](https://github.com/nickyspatial) library for segmentation and supervised classification (Random Forest, SVM, KNN), combined with a **FastAPI backend** and a **Leaflet-based web UI** for an end-to-end pipeline.
-
+This video sums up the overall workflow on how it works: https://drive.google.com/file/d/1kbkMGpdV6UeogWRjpqjGZD-2Hxu5dwaV/view?usp=sharing
 ---
 
 # What this repo includes
@@ -44,7 +44,7 @@ The backend will now be available at `http://127.0.0.1:8001`.
 ## 2. Setup frontend
 Open the frontend `index.html` in a browser.  
 If you are using VS Code, you can right-click and **Open with Live Server** to serve it on a different port (e.g., `http://127.0.0.1:5500`).  
-
+ 
 This UI provides four main tabs:
 - **Layers**: Upload rasters or load existing GeoJSONs  
 - **Segment**: Choose raster, set parameters (scale, compactness), run segmentation  

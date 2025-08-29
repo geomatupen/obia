@@ -168,24 +168,51 @@ function renderLegendFor(name) {
   legendEntriesEl.appendChild(ul);
 }
 
+
+function showConfirmDialog() {
+  confirmModal = document.getElementById("confirmModal");
+  confirmModal.classList.remove('hidden');
+  confirmBackdrop.classList.remove('hidden');
+}
+
+function hideConfirmDialog() {
+  confirmModal = document.getElementById("confirmModal");
+  confirmModal.classList.add('hidden');
+  confirmBackdrop.classList.add('hidden');
+}
+
+function confirmBool() {
+  showConfirmDialog();
+  return new Promise((resolve) => {
+    function done(val){ hideConfirmDialog(); document.removeEventListener('click', onClick, true); resolve(val); }
+    function onClick(e){ const id=e.target.id; if(id==='confirmYesBtn') done(true); if(id==='confirmNoBtn'||id==='confirmBackdrop') done(false); }
+    document.addEventListener('click', onClick, true);
+  });
+}
+
+
 // delete files from backend
 async function deleteServerFile(filename) {
-  const res = await fetch(BACKEND()+"/delete", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" }, // keep your JSON
-    body: JSON.stringify({ name: filename })
-  });
+  const confirm = await confirmBool();
+  if(confirm){
+    const res = await fetch(BACKEND()+"/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" }, // keep your JSON
+      body: JSON.stringify({ name: filename })
+    });
 
-  if (res.ok) {
-    const out = await res.json();
-    // run follow-up code here (e.g., remove layer, refresh list)
-    notifySuccess("Deleted: " + (out.removed || []).join(", "));
-    return true;
-  } else {
-    const err = await res.json().catch(() => null);
-    notifyWarning(err?.error || "Delete failed");
-    return false;
+    if (res.ok) {
+      const out = await res.json();
+      // run follow-up code here (e.g., remove layer, refresh list)
+      notifySuccess("Deleted: " + (out.removed || []).join(", "));
+      return true;
+    } else {
+      const err = await res.json().catch(() => null);
+      notifyWarning(err?.error || "Delete failed");
+      return false;
+    }
   }
+  
 }
 
 

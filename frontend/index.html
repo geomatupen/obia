@@ -120,18 +120,33 @@
     .button-row button {
       flex: 1;
       padding: 10px;
-      border: none;
+      /*border: none;*/
       border-radius: 4px;
-      background-color: #007bff;
-      color: white;
+      /* background-color: #007bff; */
+      /* color: white; */
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
       transition: background-color 0.2s;
     }
 
-    .button-row button:hover {
+    .secondary-button{
+      background: transparent;
+      color: black;
+      border: 1px solid #e3e3e3;
+    }
+
+    .primary-button{
+      background-color: #007bff;
+      color:white;
+      border: none;
+    }
+
+    .primary-button:hover {
       background-color: #0056b3;
+    }
+    .secondary-button:hover {
+      border: 1px solid #0056b3;
     }
 
     .reset_buttons {
@@ -542,6 +557,42 @@
 }
 .toast .close:hover{ background:rgba(0,0,0,.06); }
 
+/* show/hide */
+#confirmBackdrop.hidden, #confirmModal.hidden { display: none !important; }
+
+/* dim background */
+#confirmBackdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 999;
+}
+
+/* centered, compact confirm modal */
+#confirmModal{
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;             /* solid background */
+  color: #111;
+  width: 360px; max-width: 92vw; /* small dialog */
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.3);
+  z-index: 1000;
+  height:  135px; 
+  overflow: auto;
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+/* tidy content */
+#confirmModal .confirm-title{ font-weight: 600; margin: 0; }
+#confirmModal .confirm-actions{ display: flex; gap: 8px; justify-content: flex-end; }
+
+/* optional buttons */
+#confirmModal .btn-danger{ background:#e11d48; color:#fff; border:0; border-radius:8px; padding:8px 12px; }
+#confirmModal .btn-ghost{ background:transparent; border:1px solid #ddd; border-radius:8px; padding:8px 12px; }
+
 
 
   </style>
@@ -565,7 +616,7 @@
     <!-- layer Tab -->
     <div id="layerTab" class="tab-content active">
       <div class="button-row">
-				<button id="openAddLayerBtn" class="primary"><i class="fa-solid fa-plus"></i>  Add Layer</button>
+				<button id="openAddLayerBtn" class="primary primary-button"><i class="fa-solid fa-plus"></i>  Add Layer</button>
 			</div>
       <!-- Thin loading bar + error line -->
       <div id="addLayerProgress" class="hidden loading"><div class="bar"></div></div>
@@ -575,7 +626,7 @@
 	  <div id="layerList" class="layer-list"></div>
 
 	  <div class="button-row">
-        <button id = "showSamplesTabButton" onclick="showTab('samplesTab')" style="display: none;">Start picking samples ></button>
+        <button id = "showSamplesTabButton" class = "secondary-button" onclick="showTab('samplesTab')" style="display: none;">Start picking samples ></button>
 	  </div>
       <!--<div class="button-row">
         <button onclick="exportStyledGeoJSON()">Export Styled GeoJSON</button>
@@ -597,10 +648,10 @@
       <label for="segCompactness">Compactness</label>
       <input id="segCompactness" type="number" step="0.1" value="0.3" />
       <div class="button-row">
-        <button class="primary" onclick="runSegmentation()">Run segmentation</button>
+        <button onclick="runSegmentation()" class = "primary-button">Run segmentation</button>
       </div>
-      <button onclick="showTab('uploadTab')">← Back</button>
-      <button onclick="showTab('samplesTab')">Next → Samples</button>
+      <button onclick="showTab('uploadTab')" class = "secondary-button">← Back</button>
+      <button onclick="showTab('samplesTab')" class = "secondary-button">Next → Samples</button>
       <div id="segStatus" class="hint"></div>
     </div>
 
@@ -621,25 +672,24 @@
         <input type="number" id="classCount" min="1" value="2" />
 
         <div class="button-row">
-          <button onclick="generateClassControls()">Generate</button>
-          <button onclick="resetSelections()" class="reset_buttons">Reset</button>
+          <button onclick="generateClassControls()" class = "primary-button">Generate</button>
+          <button onclick="resetSelections()" class="reset_buttons" class = "secondary-button">Reset</button>
         </div>
         <br/>
         <div id="innerBlock">
-          <div class="button-row">
-            <button onclick="download_class_json()">Download Class Values</button>
-            <!-- NEW: Save samples to backend -->
-            <button onclick="saveSamples()">Save Samples</button>
-          </div>
-
-          <label for="classCount">Select Class to pick samples:</label>
+           <label for="classCount">Select Class to pick samples:</label>
           <div id="classControls"></div>
           <h4>Segment IDs by Class</h4>
           <div id="classwiseIds" class="class-ids"></div>
         </div>
+        <div class="button-row">
+            <button onclick="download_class_json()" class = "secondary-button">Download Class Values</button>
+            <!-- NEW: Save samples to backend -->
+            <button onclick="saveSamples()" class = "primary-button">Save Samples</button>
+          </div>
 
-        <button onclick="showTab('segmentTab')">← Back</button>
-        <button onclick="showTab('classificationTab')">Next → Classification</button>
+        <button onclick="showTab('segmentTab')" class = "secondary-button">← Back</button>
+        <button onclick="showTab('classificationTab')" class = "secondary-button">Next → Classification</button>
       </div>
     </div>
 
@@ -669,7 +719,7 @@
 
       <br/>
       <div class="button-row">
-        <button id="runClassificationBtn" class="btn primary">Run Classification</button>
+        <button id="runClassificationBtn" class="btn primary-button">Run Classification</button>
       </div>
 
       <div id="clfStatus" class="clf-status" aria-live="polite"></div>
@@ -750,6 +800,24 @@
     </div>
   </div>
 </div>
+
+
+<!-- Delete Confirm Backdrop -->
+<div id="confirmBackdrop" class="hidden backdrop"></div>
+
+<!-- Delete Confirm Modal -->
+<div id="confirmModal" class="hidden modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmDesc">
+  <div class="confirm-title" id="confirmTitle">Confirm delete</div>
+  <div id="confirmDesc">
+    Are you sure you want to delete <strong id="confirmFileName"></strong>?
+  </div>
+
+  <div class="confirm-actions">
+    <button id="confirmNoBtn" class="btn-ghost" type="button">Cancel</button>
+    <button id="confirmYesBtn" class="btn-danger" type="button">Delete</button>
+  </div>
+</div>
+
 
 <!-- Toasts -->
 <div id="toasts" class="toasts" aria-live="polite" aria-atomic="true"></div>

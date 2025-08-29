@@ -140,7 +140,8 @@ function refreshLegendLayers() {
   legendSelectEl.innerHTML = "";
   if (!names.length) {
     console.log("inside")
-    legendTitleEl.textContent = ""; legendEntriesEl.innerHTML = "";
+    legendTitleEl.textContent = ""; 
+    legendEntriesEl.innerHTML = "";
     const o = document.createElement("option"); o.value = ""; o.textContent = "— no styled layers —";
     legendSelectEl.appendChild(o); return;
   }
@@ -150,15 +151,18 @@ function refreshLegendLayers() {
 }
 
 function renderLegendFor(name) {
-  console.log("inside renderlegendfor")
+ 
   const rec = layers[name];
-  legendTitleEl.textContent = name || "";
+   console.log("inside renderlegendfor"+rec.style.kind)
+  // legendTitleEl.textContent = name || "";
   legendEntriesEl.innerHTML = "";
-  if (!rec || !rec.style || rec.style.kind !== "categorical") return;
+  if (!rec || !rec.style || (rec.style.kind !== "categorical" && rec.style.kind !== "custommap")) return;
+  console.log("not returned")
   const ul = document.createElement("ul"); ul.className = "legend-list";
   Object.entries(rec.style.categories || {}).forEach(([val, color]) => {
+    console.log(color)
     const li = document.createElement("li"); li.className = "legend-item";
-    li.innerHTML = `<span class="swatch" style="background:${color}"></span><span class="label">${val}</span>`;
+    li.innerHTML = `<span class="legend-color" style="background:${color}"></span><span class="label">${val}</span>`;
     ul.appendChild(li);
   });
   legendEntriesEl.appendChild(ul);

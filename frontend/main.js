@@ -72,6 +72,10 @@ function baseStyle(rec, feat) {
 
 // add GeoJSON layer
 function addLayer(name, geojson, type, opts) {
+  const existing = layers[name];
+  if (existing && existing.leafletLayer) {
+    existing.leafletLayer.remove();
+  }
   const rec = { type: type || "viewer", geojson, style: null, segmentId: opts && opts.segmentId, visible: true };
   const layer = L.geoJSON(geojson, {
     style: (f) => baseStyle(rec, f)

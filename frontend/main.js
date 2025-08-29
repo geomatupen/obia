@@ -80,6 +80,10 @@ function addLayer(name, geojson, type, opts) {
   rec.leafletLayer = layer;
   const b = layer.getBounds(); if (b && b.isValid()) rec.bounds = b;
   layers[name] = rec;
+   if(name.toLowerCase().startsWith("classify_")){
+      layers[name].style = { kind: "categorical", attr: null, map: {} };
+      renderStyle(name);
+    }
   renderLayerList(); refreshLegendLayers();
   return layer;
 }
@@ -125,21 +129,28 @@ legendCtl.onAdd = function () {
   return div;
 };
 function styledLayerNames() {
-  return Object.entries(layers).filter(([, r]) => r.type !== "raster" && r.style && r.style.kind === "categorical").map(([n]) => n);
+  console.log(Object.entries(layers))
+  return Object.entries(layers).filter(([, r]) => r.type !== "raster" && r.style && (r.style.kind === "categorical"  || r.style.kind === "custommap")).map(([n]) => n);
 }
 function refreshLegendLayers() {
+  console.log(legendSelectEl)
   if (!legendSelectEl) return;
   const names = styledLayerNames();
+  console.log(names)
   legendSelectEl.innerHTML = "";
   if (!names.length) {
+    console.log("inside")
     legendTitleEl.textContent = ""; legendEntriesEl.innerHTML = "";
     const o = document.createElement("option"); o.value = ""; o.textContent = "— no styled layers —";
     legendSelectEl.appendChild(o); return;
   }
   names.forEach(n => { const o = document.createElement("option"); o.value = n; o.textContent = n; legendSelectEl.appendChild(o); });
-  legendSelectEl.value = names[0]; renderLegendFor(names[0]);
+  legendSelectEl.value = names[0]; 
+  renderLegendFor(names[0]);
 }
+
 function renderLegendFor(name) {
+  console.log("inside renderlegendfor")
   const rec = layers[name];
   legendTitleEl.textContent = name || "";
   legendEntriesEl.innerHTML = "";
@@ -415,7 +426,9 @@ async function addServerGeoJSONs() {
     const base = (it.name || it.id || "GeoJSON").replace(/\.geojson$/i, "");
     const isSeg = !!(gj && gj.features && gj.features[0] && gj.features[0].properties && ("segment_id" in gj.features[0].properties));
     addLayer(base, gj, isSeg ? "segment" : "viewer", isSeg && it.id ? { segmentId: it.id } : {});
+   
   }
+  
   renderLayerList(); refreshLegendLayers();
   if (items.length) notifySuccess("Loaded existing GeoJSONs");
 }
@@ -776,63 +789,57 @@ function applyStyle(layerName) {
   if (typeof refreshLegendLayers === "function") refreshLegendLayers();
 }
 
-// --- your modal using your original element IDs, no $, no window ---
-function openStyleModal(layerName) {
-  var rec = layers[layerName];
-  if (!rec || !rec.geojson) return;
+function renderStyle(layerName) {
+    var rec = layers[layerName];
+    console.log(rec.style)
+    var st = rec.style; // || (rec.style = { kind: "custommap", attr: null, map: {} });
+    var attrEl   = document.getElementById("attributeSelect");
+    var mapDiv   = document.getElementById("styleMapping");
+    var warn     = document.getElementById("styleWarning");
+    console.log(st, attrEl)
 
-  var panel    = document.getElementById("styleConfig");
-  var attrEl   = document.getElementById("attributeSelect");
-  var mapDiv   = document.getElementById("styleMapping");
-  var warn     = document.getElementById("styleWarning");
-  if (!panel || !attrEl || !mapDiv) return;
+    var feats = Array.isArray(rec.geojson.features) ? rec.geojson.features : [];
+    var firstProps = (feats[0] && feats[0].properties) ? feats[0].properties : {};
+    var attrs = Object.keys(firstProps);
 
-  panel.style.display = "block";
-  attrEl.innerHTML = "";
-  mapDiv.innerHTML = "";
-  if (warn) { warn.style.display = "none"; warn.textContent = ""; }
+    // unique counts for each attribute
+    var uniqCount = {};
+    for (var i = 0; i < attrs.length; i++) {
+      var a = attrs[i];
+      var s = {};
+      for (var j = 0; j < feats.length; j++) {
+        var val = (feats[j].properties || {})[a];
+        s[String(val)] = true;
+      }
+      uniqCount[a] = Object.keys(s).length;
 
-  var feats = Array.isArray(rec.geojson.features) ? rec.geojson.features : [];
-  var firstProps = (feats[0] && feats[0].properties) ? feats[0].properties : {};
-  var attrs = Object.keys(firstProps);
-
-  // unique counts for each attribute
-  var uniqCount = {};
-  for (var i = 0; i < attrs.length; i++) {
-    var a = attrs[i];
-    var s = {};
-    for (var j = 0; j < feats.length; j++) {
-      var val = (feats[j].properties || {})[a];
-      s[String(val)] = true;
+      var opt = document.createElement("option");
+      opt.value = a;
+      opt.textContent = a + " (" + uniqCount[a] + ")";
+      attrEl.appendChild(opt);
     }
-    uniqCount[a] = Object.keys(s).length;
 
-    var opt = document.createElement("option");
-    opt.value = a;
-    opt.textContent = a + " (" + uniqCount[a] + ")";
-    attrEl.appendChild(opt);
-  }
+    if (!rec.style) rec.style = { kind: "custommap", attr: null, map: {} };
 
-  if (!rec.style) rec.style = { kind: "custommap", attr: null, map: {} };
-
-  // default attribute: 2..10 uniques if possible
-  function pickDefaultAttr() {
-    for (var k = 0; k < attrs.length; k++) {
-      var nm = attrs[k];
-      if (uniqCount[nm] > 1 && uniqCount[nm] <= 10) return nm;
+    // default attribute: 2..10 uniques if possible
+    function pickDefaultAttr() {
+      for (var k = 0; k < attrs.length; k++) {
+        var nm = attrs[k];
+        if (uniqCount[nm] > 1 && uniqCount[nm] <= 10) return nm;
+      }
+      return null;
     }
-    return null;
-  }
-  if (!rec.style.attr || attrs.indexOf(rec.style.attr) === -1) {
-    rec.style.attr = pickDefaultAttr();
-  }
-  if (rec.style.attr && attrs.indexOf(rec.style.attr) !== -1) {
-    attrEl.value = rec.style.attr;
-  }
+    if (!rec.style.attr || attrs.indexOf(rec.style.attr) === -1) {
+      rec.style.attr = pickDefaultAttr();
+    }
+    if (rec.style.attr && attrs.indexOf(rec.style.attr) !== -1) {
+      attrEl.value = rec.style.attr;
+    }
 
-  function renderMapping() {
-    var st = rec.style;
+
     st.attr = attrEl.value || null;
+
+    var feats = Array.isArray(rec.geojson.features) ? rec.geojson.features : [];
 
     if (!st.attr) {
       mapDiv.innerHTML = "";
@@ -905,8 +912,24 @@ function openStyleModal(layerName) {
     applyStyle(layerName);
   }
 
-  attrEl.onchange = renderMapping;
-  renderMapping();
+// --- your modal using your original element IDs, no $, no window ---
+function openStyleModal(layerName) {
+  var rec = layers[layerName];
+  if (!rec || !rec.geojson) return;
+
+  var panel    = document.getElementById("styleConfig");
+  var attrEl   = document.getElementById("attributeSelect");
+  var mapDiv   = document.getElementById("styleMapping");
+  var warn     = document.getElementById("styleWarning");
+  if (!panel || !attrEl || !mapDiv) return;
+
+  panel.style.display = "block";
+  attrEl.innerHTML = "";
+  mapDiv.innerHTML = "";
+  if (warn) { warn.style.display = "none"; warn.textContent = ""; }
+
+  attrEl.onchange = renderStyle;
+  renderStyle(layerName);
 
   // open modal
   var modal = document.getElementById("styleModal");

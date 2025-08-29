@@ -1,0 +1,11 @@
+venv/
+backend/data/
+backend/results/
+backend/uploads/
+backend/tiles/
+frontend/results
+frontend/ortho
+frontend/results
+.ipynb_checckpoints/
+ortho/
+results/

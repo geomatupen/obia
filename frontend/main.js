@@ -513,7 +513,7 @@ async function runSegmentation() {
   if (!geo) { setSegStatus("Segmentation failed"); alert("No result"); return; }
 
   const segId = data.id || ((data.geojson_url || "").split("/").pop() || "").replace(/\.geojson$/i, "");
-  const layerName = "Segment_" + (segId || Math.random().toString(36).slice(2, 8));
+  const layerName = segId || Math.random().toString(36).slice(2, 8);
 
   segmentLayerIdentify(layerName, geo);
   setSegStatus("Segmentation done.");
@@ -1037,7 +1037,7 @@ async function runClassification() {
   if (!result) { if (status) status.textContent = "Classification failed"; alert("No result"); return; }
 
   const chosenLabel = segSel.options[segSel.selectedIndex] ? segSel.options[segSel.selectedIndex].textContent : segment_id;
-  const name = "Classification - " + chosenLabel;
+  const name = "classify_" + chosenLabel.split(egment_)[1];
   addLayer(name, result, "viewer", {});
 
   // auto-style by "class"
@@ -1123,7 +1123,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   if (!rr.ok) { notifyWarning("Failed to load merged GeoJSON"); return; }
   const gj = await rr.json();
 
-  const name = "MergedCleaned - " + segSel.value;
+  const name = "merged_" + segSel.value;
   addLayer(name, gj, "viewer", {});
   if (layers[name] && layers[name].leafletLayer && layers[name].leafletLayer.getBounds) {
     const b = layers[name].leafletLayer.getBounds();

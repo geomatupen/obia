@@ -208,7 +208,18 @@ async function deleteServerFile(filename) {
     if (res.ok) {
       const out = await res.json();
       // run follow-up code here (e.g., remove layer, refresh list)
+      
       notifySuccess("Deleted: " + (out.removed || []).join(", "));
+
+      const rec = layers[filename];
+      if (rec && rec.leafletLayer) {
+        try { rec.leafletLayer.remove(); } catch (_) {}
+      }
+      delete layers[filename];
+
+      renderLayerList();       // this refreshes the side panel
+      refreshRasterDropdown(); // keep your dropdowns synced
+      refreshLegendLayers(); 
       return true;
     } else {
       const err = await res.json().catch(() => null);
@@ -224,6 +235,7 @@ async function deleteServerFile(filename) {
 
 // --------- layer list panel ----------
 function renderLayerList() {
+  console.log("renderLayerList")
   const list = byId("layerList"); if (!list) return;
   list.innerHTML = "";
   const h = document.createElement("h4"); h.textContent = "Layers"; list.appendChild(h);
@@ -272,7 +284,9 @@ function renderLayerList() {
         e.stopPropagation(); menu.classList.add("hidden");
         if (rec.leafletLayer) { try { rec.leafletLayer.remove(); } catch(_){} }
         delete layers[name];
-        renderLayerList(); refreshRasterDropdown(); refreshLegendLayers();
+        renderLayerList(); 
+        refreshRasterDropdown(); 
+        refreshLegendLayers();
       }
     };
     menu.appendChild(delBtn);

@@ -424,6 +424,13 @@ def _collect_geojsons():
             "id": stem, "name": p.name, "url": f"/results/classify/{p.name}",
             "has_samples": (RESULTS / f"samples_{stem}.json").exists() or (SAMPLES_DIR / f"{stem}.json").exists(),
         })
+     # merged_cleaned/ 
+    for p in sorted(MERGED_CLEAN_DIR.glob("*.geojson")):
+        stem = p.stem
+        items.append({
+            "id": stem, "name": p.name, "url": f"/results/merged_cleaned/{p.name}",
+            "has_samples": False,
+        })
     # root (back-compat)
     for p in sorted(RESULTS.glob("*.geojson")):
         if p.parent != RESULTS:  # skip subdirs

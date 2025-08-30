@@ -737,7 +737,10 @@ async function handleSamplesSegmentChange() {
   });
   if (exists) {
     activateSamplingForSegment(existingName);
-    zoomToCurrentRaster();
+    // zoomToCurrentRaster();
+    console.log(layers[existingName].leafletLayer.getBounds())
+    const bounds = layers[existingName].leafletLayer.getBounds();
+    map.fitBounds(bounds);
     return;
   }
 

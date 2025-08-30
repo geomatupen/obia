@@ -624,14 +624,8 @@
 
       
 	  <div id="layerList" class="layer-list"></div>
-
-	  <div class="button-row">
-        <button id = "showSamplesTabButton" class = "secondary-button" onclick="showTab('samplesTab')" style="display: none;">Start picking samples ></button>
-	  </div>
-      <!--<div class="button-row">
-        <button onclick="exportStyledGeoJSON()">Export Styled GeoJSON</button>
-        <button onclick="exportClassifications()">Export CSV</button>
-      </div>-->
+    <br/>
+	  <button onclick="showTab('segmentTab')" class = "secondary-button">Next → Segment</button>
     </div>
 
     <!-- Segment Tab -->
@@ -650,7 +644,8 @@
       <div class="button-row">
         <button onclick="runSegmentation()" class = "primary-button">Run segmentation</button>
       </div>
-      <button onclick="showTab('uploadTab')" class = "secondary-button">← Back</button>
+      <br/>
+      <button onclick="showTab('layerTab')" class = "secondary-button">← Back</button>
       <button onclick="showTab('samplesTab')" class = "secondary-button">Next → Samples</button>
       <div id="segStatus" class="hint"></div>
     </div>
@@ -688,6 +683,7 @@
             <button onclick="saveSamples()" class = "primary-button">Save Samples</button>
           </div>
 
+        <br/>
         <button onclick="showTab('segmentTab')" class = "secondary-button">← Back</button>
         <button onclick="showTab('classificationTab')" class = "secondary-button">Next → Classification</button>
       </div>
@@ -723,6 +719,8 @@
       </div>
 
       <div id="clfStatus" class="clf-status" aria-live="polite"></div>
+      <br/>
+      <button onclick="showTab('samplesTab')" class = "secondary-button">← Back</button>
     </div>
   </div>
 

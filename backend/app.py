@@ -12,13 +12,13 @@ from rasterio.warp import transform_bounds
 
 from fastapi import FastAPI, UploadFile, File, Form, Request, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 # If you have real segmentation helpers, keep these:
-from obia.segmentation import run_slic_segmentation, layer_to_geojson
-from obia.classification import classify as run_classification
-from obia.downsample import downsample_raster
+from .obia.segmentation import run_slic_segmentation, layer_to_geojson
+from .obia.classification import classify as run_classification
+from .obia.downsample import downsample_raster
 
 import logging, time
 logger = logging.getLogger("app")
@@ -27,6 +27,7 @@ if not logger.handlers:
     h = logging.StreamHandler()
     h.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
     logger.addHandler(h)
+
 
 MAX_UPLOAD_MB = float(os.getenv("RASTER_MAX_MB", "30"))
 AUTO_DS_FACTOR = float(os.getenv("RASTER_DS_FACTOR", "4"))
@@ -42,6 +43,11 @@ RESULTS = BASE / "results"
 SEGMENTS_DIR = RESULTS / "segments"
 CLASSIFY_DIR = RESULTS / "classify"
 SAMPLES_DIR = RESULTS / "samples"
+
+FRONTEND_DIR = BASE.parent / "frontend"  # project/frontend
+INDEX_HTML = FRONTEND_DIR / "index.html"
+
+
 for p in (UPLOADS, RESULTS, SEGMENTS_DIR, CLASSIFY_DIR, SAMPLES_DIR):
     p.mkdir(parents=True, exist_ok=True)
 
@@ -61,6 +67,15 @@ app.add_middleware(
     allow_origins=["*"], allow_methods=["*"], allow_headers=["*"], allow_credentials=True,
 )
 app.mount("/results", StaticFiles(directory=str(RESULTS)), name="results")
+
+# Serve everything under frontend/ at /app
+# If your index.html references ./assets/main.js etc., they will be available as /app/assets/main.js
+app.mount("/app", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="app")
+
+# Optional: redirect root to /app/ so you can open http://localhost:8001/
+@app.get("/", include_in_schema=False)
+def root_redirect():
+    return RedirectResponse(url="/app/")
 
 # ---------------- small helpers
 def _ok(data): return JSONResponse(content=data)

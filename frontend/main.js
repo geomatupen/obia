@@ -874,7 +874,8 @@ function renderStyle(layerName) {
       attrEl.value = rec.style.attr;
     }
 
-
+    console.log(layerName)
+    console.log(st);
     st.attr = attrEl.value || null;
 
     var feats = Array.isArray(rec.geojson.features) ? rec.geojson.features : [];

@@ -1037,7 +1037,7 @@ async function runClassification() {
   if (!result) { if (status) status.textContent = "Classification failed"; alert("No result"); return; }
 
   const chosenLabel = segSel.options[segSel.selectedIndex] ? segSel.options[segSel.selectedIndex].textContent : segment_id;
-  const name = "classify_" + chosenLabel.split(egment_)[1];
+  const name = "classify_" + chosenLabel.split("egment_")[1];
   addLayer(name, result, "viewer", {});
 
   // auto-style by "class"

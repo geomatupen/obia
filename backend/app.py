@@ -9,6 +9,7 @@ import rasterio
 from rasterio.windows import from_bounds
 from rasterio.enums import Resampling
 from rasterio.warp import transform_bounds
+import geopandas as gpd
 
 from fastapi import FastAPI, UploadFile, File, Form, Request, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,8 +20,10 @@ from fastapi.staticfiles import StaticFiles
 from .obia.segmentation import run_slic_segmentation, layer_to_geojson
 from .obia.classification import classify as run_classification
 from .obia.downsample import downsample_raster
+from .obia.merge_clean_polygons import merge_clean_polygons
+from nickyspatial.core.layer import Layer
 
-import logging, time
+import logging
 logger = logging.getLogger("app")
 logger.setLevel(logging.INFO)
 if not logger.handlers:
@@ -43,6 +46,10 @@ RESULTS = BASE / "results"
 SEGMENTS_DIR = RESULTS / "segments"
 CLASSIFY_DIR = RESULTS / "classify"
 SAMPLES_DIR = RESULTS / "samples"
+
+MERGED_CLEAN_DIR = RESULTS / "merged_cleaned"
+MERGED_CLEAN_DIR.mkdir(parents=True, exist_ok=True)
+
 
 FRONTEND_DIR = BASE.parent / "frontend"  # project/frontend
 INDEX_HTML = FRONTEND_DIR / "index.html"
@@ -596,3 +603,48 @@ async def delete_file(request: Request, name: str = Form(None)):
         return _bad("file not found", 404)
 
     return _ok({"removed": removed})
+
+
+
+@app.post("/merge_clean")
+async def merge_clean(
+    filename: str = Form(...),
+    class_column: str = Form("classification"),
+    target_class: str = Form("all"),
+    area_attr: str = Form("area_pixels"),
+):
+    """
+    Merge & clean polygons for a classified GeoJSON in results/classify/.
+    Saves output to results/merged_cleaned/merged_<filename>.geojson
+    """
+    if not filename.lower().endswith(".geojson"):
+        filename = filename + ".geojson"
+
+    src_path = CLASSIFY_DIR / filename
+    if not src_path.exists():
+        return _bad(f"File not found: {filename}", 404)
+
+    try:
+        gdf = gpd.read_file(src_path)
+        lyr = Layer(name=src_path.stem, type="vector")
+        lyr.objects = gdf
+        lyr.crs = gdf.crs
+
+        cleaned = merge_clean_polygons(
+            lyr,
+            class_column=class_column,
+            target_class=target_class,
+            area_attr=area_attr,
+        )
+
+        out_name = f"merged_{src_path.stem}.geojson"
+        out_path = MERGED_CLEAN_DIR / out_name
+        cleaned.objects.to_file(out_path, driver="GeoJSON")
+
+        return _ok({
+            "geojson_url": f"/results/merged_cleaned/{out_name}",
+            "output": out_name
+        })
+    except Exception as e:
+        logger.exception("merge_clean failed")
+        return _bad(f"merge_clean failed: {e}", 500)

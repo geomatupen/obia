@@ -293,41 +293,63 @@ def tile_png(rid: str, z: int, x: int, y: int):
         return _bad("raster not found", 404)
     try:
         with rasterio.open(path) as ds:
-            west, south, east, north = _tile_bounds_wgs84(x, y, z)
+            west, south, east, north = _tile_bounds_wgs84(x, y, z)  # XYZ bounds in EPSG:4326
             rb = transform_bounds("EPSG:4326", ds.crs, west, south, east, north, densify_pts=21)
 
             idxs = list(range(1, min(3, ds.count) + 1)) or [1]
             win = from_bounds(*rb, transform=ds.transform)
             out_h = out_w = 256
+
+            # IMPORTANT: read as masked so nodata/out-of-bounds are masked True
             data = ds.read(
-                indexes=idxs, window=win, out_shape=(len(idxs), out_h, out_w),
-                resampling=Resampling.bilinear, boundless=True, fill_value=0
+                indexes=idxs,
+                window=win,
+                out_shape=(len(idxs), out_h, out_w),
+                resampling=Resampling.bilinear,
+                boundless=True,
+                masked=True
             ).astype("float32")
 
-            alpha_mask = (ds.read_masks(1, window=win, out_shape=(out_h, out_w)) == 0)
+            # Alpha: transparent where ALL bands are masked (or any, depending on preference)
+            # Using "any" tends to look better at edges:
+            mask_any = np.any(data.mask, axis=0)  # True where at least one band is invalid
+            alpha = np.where(mask_any, 0, 255).astype("uint8")
 
+            # Prepare for scaling but preserve mask
             vmins, vmaxs = _get_render_stats(rid, ds)
-            for b in range(data.shape[0]):
+
+            # Fill masked with NaN before scaling so they stay out of the math
+            filled = np.where(~data.mask, data, np.nan)
+
+            for b in range(filled.shape[0]):
                 vmin = vmins[b if b < len(vmins) else -1]
                 vmax = vmaxs[b if b < len(vmaxs) else -1]
-                data[b] = (data[b] - vmin) / (vmax - vmin)
-            data = np.clip(data, 0, 1)
+                if vmax == vmin:
+                    # avoid divide-by-zero -> make band neutral gray (or zeros)
+                    filled[b] = 0.0
+                else:
+                    filled[b] = (filled[b] - vmin) / (vmax - vmin)
 
-            if data.shape[0] == 1:
-                data = np.repeat(data, 3, axis=0)
+            # Clip and put masked pixels back to 0 (alpha will hide them anyway)
+            filled = np.clip(filled, 0, 1)
+            filled = np.where(~data.mask, filled, 0.0)
 
-            rgb = (data[:3] * 255).astype("uint8")
-            alpha = np.where(alpha_mask, 0, 255).astype("uint8")
+            if filled.shape[0] == 1:
+                filled = np.repeat(filled, 3, axis=0)
 
-            try:
-                from PIL import Image
-                rgba = np.dstack([rgb[0], rgb[1], rgb[2], alpha])
-                im = Image.fromarray(rgba, mode="RGBA")
-                buf = BytesIO()
-                im.save(buf, format="PNG")
-                return Response(content=buf.getvalue(), media_type="image/png")
-            except Exception:
+            rgb = (filled[:3] * 255).astype("uint8")
+
+            # Optional: if everything is transparent, serve a tiny transparent tile
+            if np.all(alpha == 0):
                 return Response(content=TRANSPARENT_PNG_1x1, media_type="image/png")
+
+            from PIL import Image
+            rgba = np.dstack([rgb[0], rgb[1], rgb[2], alpha])
+            im = Image.fromarray(rgba, mode="RGBA")
+            buf = BytesIO()
+            im.save(buf, format="PNG")
+            return Response(content=buf.getvalue(), media_type="image/png")
+
     except Exception:
         return Response(content=TRANSPARENT_PNG_1x1, media_type="image/png")
 

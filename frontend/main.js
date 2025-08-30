@@ -312,6 +312,15 @@ function renderLayerList() {
   // refreshClassificationDropdown();
 }
 
+//close three dot options on click anywhere.
+document.addEventListener('click', (e) => {
+  // if the click is NOT inside any .layer-actions, close all menus
+  if (!e.target.closest('.layer-actions')) {
+    document.querySelectorAll('.layer-menu').forEach(m => m.classList.add('hidden'));
+  }
+});
+
+
 // --------- upload modal (optional) ----------
 (function () {
   const openBtn = byId("openAddLayerBtn");
@@ -483,7 +492,33 @@ async function addServerGeoJSONs() {
 }
 
 // --------- segmentation ----------
-function setSegStatus(msg) { const s = byId("segStatus"); if (s) s.textContent = msg || ""; }
+function setSegStatus(msg, type) { 
+  if(type == "segmentation"){
+    const s = byId("segStatus"); 
+    if (s) s.textContent = msg || ""; 
+    // console.log(msg)
+    if(msg.toLowerCase().includes("done")){
+      // console.log("entered")
+      s.style.color = "#036b03";
+    }
+    else{
+      s.style.color = "#9f6701";
+    }
+  }
+  else if(type == "classification"){
+    const s = byId("clfStatus"); 
+    if (s) s.textContent = msg || ""; 
+    // console.log(msg)
+    if(msg.toLowerCase().includes("done")){
+      // console.log("entered")
+      s.style.color = "#036b03";
+    }
+    else{
+      s.style.color = "#9f6701";
+    }
+  }
+  
+}
 
 async function runSegmentation() {
   const rasterSel = byId("orthoSelect");
@@ -493,7 +528,7 @@ async function runSegmentation() {
 
   if (!raster_id) { alert("Please select an image layer first."); return; }
 
-  setSegStatus("Running segmentation…");
+  setSegStatus("Running segmentation…", "segmentation");
 
   const fd = new FormData();
   fd.append("raster_id", raster_id);
@@ -501,7 +536,7 @@ async function runSegmentation() {
   fd.append("compactness", String(compactness));
 
   const resp = await fetch(BACKEND() + "/segment", { method: "POST", body: fd });
-  if (!resp.ok) { setSegStatus("Segmentation failed"); alert("Segmentation failed"); return; }
+  if (!resp.ok) { setSegStatus("Segmentation failed", "segmentation"); alert("Segmentation failed"); return; }
   const data = await resp.json();
 
   let geo = null;
@@ -510,13 +545,13 @@ async function runSegmentation() {
     const url = data.geojson_url.startsWith("http") ? data.geojson_url : BACKEND() + data.geojson_url;
     const r = await fetch(url, { cache: "no-store" }); if (r.ok) geo = await r.json();
   }
-  if (!geo) { setSegStatus("Segmentation failed"); alert("No result"); return; }
+  if (!geo) { setSegStatus("Segmentation failed", "segmentation"); alert("No result"); return; }
 
   const segId = data.id || ((data.geojson_url || "").split("/").pop() || "").replace(/\.geojson$/i, "");
   const layerName = segId || Math.random().toString(36).slice(2, 8);
 
   segmentLayerIdentify(layerName, geo);
-  setSegStatus("Segmentation done.");
+  setSegStatus("Segmentation done.", "segmentation");
 
   // refresh dropdowns
   refreshSamplesSegmentSelectFromServer();
@@ -1018,14 +1053,14 @@ async function runClassification() {
   const methodSel = byId("clfMethod");
   const method = methodSel && methodSel.value ? methodSel.value : "rf";
 
-  if (status) status.textContent = "Running classification…";
+  if (status) setSegStatus("Running classification…", "classification");
 
   const fd = new FormData();
   fd.append("segment_id", segment_id);
   fd.append("method", method);
 
   const r = await fetch(BACKEND() + "/classify", { method: "POST", body: fd });
-  if (!r.ok) { if (status) status.textContent = "Classification failed"; alert("Classification failed"); return; }
+  if (!r.ok) { if (status) setSegStatus("Classification failed", "classification"); alert("Classification failed"); return; }
   const data = await r.json();
 
   let result = null;
@@ -1034,7 +1069,7 @@ async function runClassification() {
     const url = data.geojson_url.startsWith("http") ? data.geojson_url : BACKEND() + data.geojson_url;
     const rr = await fetch(url, { cache: "no-store" }); if (rr.ok) result = await rr.json();
   }
-  if (!result) { if (status) status.textContent = "Classification failed"; alert("No result"); return; }
+  if (!result) { if (status) setSegStatus("Classification failed", "classification"); alert("No result"); return; }
 
   const chosenLabel = segSel.options[segSel.selectedIndex] ? segSel.options[segSel.selectedIndex].textContent : segment_id;
   const name = "classify_" + chosenLabel.split("egment_")[1];
@@ -1053,7 +1088,8 @@ async function runClassification() {
     const b = rec.leafletLayer.getBounds(); if (b && b.isValid && b.isValid()) map.fitBounds(b);
   }
 
-  if (status) status.textContent = "Classification done.";
+  if (status) setSegStatus("Classification done.", "classification");
+  
 }
 
 // --------- wire buttons + boot ----------

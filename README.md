@@ -2,7 +2,7 @@
 
 This project provides a **general-purpose OBIA (Object-Based Image Analysis) workflow** that works with any raster imagery.  
 It uses the [[NickySpatial](https://github.com/kshitijrajsharma/nickyspatial)] library for segmentation and supervised classification (Random Forest, SVM, KNN), combined with a **FastAPI backend** and a **Leaflet-based web UI** for an end-to-end pipeline.
-This video sums up the overall workflow on how it works: [Use Case Video](https://drive.google.com/file/d/12sb2GiAZNu3acYReleCiZBLl0_W0rFUV/view?usp=sharing)
+- This video sums up the overall workflow on how it works: [Use Case Video](https://drive.google.com/file/d/12sb2GiAZNu3acYReleCiZBLl0_W0rFUV/view?usp=sharing)
 ---
 
 # What this repo includes

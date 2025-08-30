@@ -84,7 +84,7 @@ function addLayer(name, geojson, type, opts) {
   rec.leafletLayer = layer;
   const b = layer.getBounds(); if (b && b.isValid()) rec.bounds = b;
   layers[name] = rec;
-   if(name.toLowerCase().startsWith("classify_")){
+   if(name.toLowerCase().includes("classify_")){
       layers[name].style = { kind: "categorical", attr: null, map: {} };
       renderStyle(name);
     }

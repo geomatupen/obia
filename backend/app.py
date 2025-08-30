@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from .obia.segmentation import run_slic_segmentation, layer_to_geojson
 from .obia.classification import classify as run_classification
 from .obia.downsample import downsample_raster
-from .obia.merge_clean_polygons import merge_clean_polygons
+from .obia.mergeCleanPolygons import merge_clean_polygons
 from nickyspatial.core.layer import Layer
 
 import logging

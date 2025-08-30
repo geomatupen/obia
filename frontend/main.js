@@ -759,7 +759,7 @@ async function handleSamplesSegmentChange() {
 }
 
 async function refreshClassificationDropdown() {
-  const sel = byId("segmentSelect"); if (!sel) return;
+  const sel = byId("classifiedSegmentSelect"); if (!sel) return;
   sel.innerHTML = "";
   const items = await fetchSegmentsIndex();
   if (!items.length) {
@@ -997,7 +997,7 @@ function openStyleModal(layerName) {
 // --------- classification ----------
 async function runClassification() {
   const status = byId("clfStatus"); if (status) status.textContent = "";
-  const segSel = byId("segmentSelect");
+  const segSel = byId("classifiedSegmentSelect");
   const segment_id = segSel && segSel.value ? segSel.value : "";
   if (!segment_id) { alert("Select a segmentation with samples first."); return; }
   const methodSel = byId("clfMethod");
@@ -1073,3 +1073,46 @@ document.addEventListener("DOMContentLoaded", async function () {
   // <button onclick="runClassification()">Run Classification</button>
   resetSelections = resetAllSamples;
 });
+
+
+
+  const mergeBtn = byId("cleanClassifiedSegment");
+  if (mergeBtn) mergeBtn.onclick = function (e) {
+    e.preventDefault();
+    runMergeClean();
+  };
+
+
+  async function runMergeClean() {
+  // pick the classified layer filename from the dropdown or layer list
+  const segSel = byId("classifiedSegmentSelect");
+  if (!segSel || !segSel.value) {
+    alert("Select a classified layer first."); 
+    return;
+  }
+  const filename = "classify_" + segSel.value.split("egment_")[1].replace(/\.geojson$/i, "") + ".geojson";
+
+  const fd = new FormData();
+  fd.append("filename", filename);
+
+  const r = await fetch(BACKEND() + "/merge_clean", { method: "POST", body: fd });
+  if (!r.ok) {
+    const err = await r.json().catch(() => null);
+    notifyWarning(err?.error || "Merge failed");
+    return;
+  }
+
+  const data = await r.json();
+  const url = data.geojson_url.startsWith("http") ? data.geojson_url : BACKEND() + data.geojson_url;
+  const rr = await fetch(url, { cache: "no-store" });
+  if (!rr.ok) { notifyWarning("Failed to load merged GeoJSON"); return; }
+  const gj = await rr.json();
+
+  const name = "MergedCleaned - " + segSel.value;
+  addLayer(name, gj, "viewer", {});
+  if (layers[name] && layers[name].leafletLayer && layers[name].leafletLayer.getBounds) {
+    const b = layers[name].leafletLayer.getBounds();
+    if (b && b.isValid && b.isValid()) map.fitBounds(b);
+  }
+  notifySuccess("Merge & clean done");
+}

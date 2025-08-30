@@ -698,8 +698,8 @@
 
       <!-- NEW: choose segmentation (populated from segments in the map) -->
       <div class="clf-field">
-        <label for="segmentSelect">Segmentation</label>
-        <select id="segmentSelect">
+        <label for="classifiedSegmentSelect">Segmentation</label>
+        <select id="classifiedSegmentSelect">
           <option value="">— no segments —</option>
         </select>
       </div>
@@ -718,6 +718,10 @@
         <button id="runClassificationBtn" class="btn primary-button">Run Classification</button>
       </div>
 
+      <div class="button-row">
+        <button id="cleanClassifiedSegment" class="btn primary-button">Merge & Clean</button>
+      </div>
+      <br/>
       <div id="clfStatus" class="clf-status" aria-live="polite"></div>
       <br/>
       <button onclick="showTab('samplesTab')" class = "secondary-button">← Back</button>

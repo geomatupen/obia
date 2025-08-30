@@ -15,14 +15,11 @@ This video sums up the overall workflow on how it works: https://drive.google.co
 
 # Running locally
 
-## 1. Setup backend
-Open a terminal, go to the backend folder:
-
-    cd backend
+Open a terminal, and go to the folder:
 
 Create a virtual environment:
 
-    python -m venv venv
+    python -m venv venv        # python or python3 whichever you have
     source venv/bin/activate   # Linux/Mac
     venv\Scripts\activate      # Windows
 
@@ -35,15 +32,14 @@ Install dependencies (or use `environment.yaml`):
 
 Run the FastAPI server:
 
-    uvicorn app:app --workers 4 --port 8001
+    uvicorn backend.app:app --reload --port 8001
 
 The backend will now be available at `http://127.0.0.1:8001`.
+The frontend will now be available at `http://127.0.0.1:8001/app`.
 
 ---
 
-## 2. Setup frontend
-Open the frontend `index.html` in a browser.  
-If you are using VS Code, you can right-click and **Open with Live Server** to serve it on a different port (e.g., `http://127.0.0.1:5500`).  
+# Frontend Application
  
 This UI provides four main tabs:
 - **Layers**: Upload rasters or load existing GeoJSONs  
